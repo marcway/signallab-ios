@@ -14,19 +14,11 @@
 			remoteGlobalIDString = 886B72503039B3E0009F9808;
 			remoteInfo = SignalLab;
 		};
-		886B72693039B3E1009F9808 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 886B72493039B3E0009F9808 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 886B72503039B3E0009F9808;
-			remoteInfo = SignalLab;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		886B72513039B3E0009F9808 /* SignalLab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SignalLab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		886B725E3039B3E1009F9808 /* SignalLabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SignalLabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		886B72683039B3E1009F9808 /* SignalLabUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SignalLabUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -38,11 +30,6 @@
 		886B72613039B3E1009F9808 /* SignalLabTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SignalLabTests;
-			sourceTree = "<group>";
-		};
-		886B726B3039B3E1009F9808 /* SignalLabUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SignalLabUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -62,13 +49,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		886B72653039B3E1009F9808 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -77,7 +57,6 @@
 			children = (
 				886B72533039B3E0009F9808 /* SignalLab */,
 				886B72613039B3E1009F9808 /* SignalLabTests */,
-				886B726B3039B3E1009F9808 /* SignalLabUITests */,
 				886B72523039B3E0009F9808 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -87,7 +66,6 @@
 			children = (
 				886B72513039B3E0009F9808 /* SignalLab.app */,
 				886B725E3039B3E1009F9808 /* SignalLabTests.xctest */,
-				886B72683039B3E1009F9808 /* SignalLabUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -140,29 +118,6 @@
 			productReference = 886B725E3039B3E1009F9808 /* SignalLabTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		886B72673039B3E1009F9808 /* SignalLabUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 886B72783039B3E1009F9808 /* Build configuration list for PBXNativeTarget "SignalLabUITests" */;
-			buildPhases = (
-				886B72643039B3E1009F9808 /* Sources */,
-				886B72653039B3E1009F9808 /* Frameworks */,
-				886B72663039B3E1009F9808 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				886B726A3039B3E1009F9808 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				886B726B3039B3E1009F9808 /* SignalLabUITests */,
-			);
-			name = SignalLabUITests;
-			packageProductDependencies = (
-			);
-			productName = SignalLabUITests;
-			productReference = 886B72683039B3E1009F9808 /* SignalLabUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -177,10 +132,6 @@
 						CreatedOnToolsVersion = 26.4.1;
 					};
 					886B725D3039B3E1009F9808 = {
-						CreatedOnToolsVersion = 26.4.1;
-						TestTargetID = 886B72503039B3E0009F9808;
-					};
-					886B72673039B3E1009F9808 = {
 						CreatedOnToolsVersion = 26.4.1;
 						TestTargetID = 886B72503039B3E0009F9808;
 					};
@@ -202,7 +153,6 @@
 			targets = (
 				886B72503039B3E0009F9808 /* SignalLab */,
 				886B725D3039B3E1009F9808 /* SignalLabTests */,
-				886B72673039B3E1009F9808 /* SignalLabUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -216,13 +166,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		886B725C3039B3E1009F9808 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		886B72663039B3E1009F9808 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -246,13 +189,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		886B72643039B3E1009F9808 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -260,11 +196,6 @@
 			isa = PBXTargetDependency;
 			target = 886B72503039B3E0009F9808 /* SignalLab */;
 			targetProxy = 886B725F3039B3E1009F9808 /* PBXContainerItemProxy */;
-		};
-		886B726A3039B3E1009F9808 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 886B72503039B3E0009F9808 /* SignalLab */;
-			targetProxy = 886B72693039B3E1009F9808 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -498,46 +429,6 @@
 			};
 			name = Release;
 		};
-		886B72793039B3E1009F9808 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 5S94WX2H5D;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = way.SignalLabUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = SignalLab;
-			};
-			name = Debug;
-		};
-		886B727A3039B3E1009F9808 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 5S94WX2H5D;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = way.SignalLabUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = SignalLab;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -564,15 +455,6 @@
 			buildConfigurations = (
 				886B72763039B3E1009F9808 /* Debug */,
 				886B72773039B3E1009F9808 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		886B72783039B3E1009F9808 /* Build configuration list for PBXNativeTarget "SignalLabUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				886B72793039B3E1009F9808 /* Debug */,
-				886B727A3039B3E1009F9808 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
