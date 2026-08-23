@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -56,9 +57,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--xcresult", required=True, type=Path)
     parser.add_argument("--source-root", required=True, type=Path)
     parser.add_argument("--target", required=True)
-    parser.add_argument("--aggregate-min", required=True, type=percentage)
-    parser.add_argument("--file-min", required=True, type=percentage)
-    parser.add_argument("--file-min-lines", required=True, type=nonnegative_integer)
+    parser.add_argument("--aggregate-min", default=Decimal("80"), type=percentage)
+    parser.add_argument("--file-min", default=Decimal("50"), type=percentage)
+    parser.add_argument("--file-min-lines", default=10, type=nonnegative_integer)
     return parser.parse_args()
 
 
@@ -147,6 +148,28 @@ def validated_line_count(file_data: dict[str, Any], key: str, display_path: str)
     return value
 
 
+def filesystem_relative_path(path: Path, root: Path) -> Path | None:
+    resolved_path = path.resolve(strict=False)
+    resolved_root = root.resolve(strict=False)
+    if not resolved_path.exists() or not resolved_root.is_dir():
+        return None
+
+    components: list[str] = []
+    current = resolved_path
+    while True:
+        try:
+            if os.path.samefile(current, resolved_root):
+                return Path(*reversed(components))
+        except OSError:
+            return None
+
+        parent = current.parent
+        if parent == current:
+            return None
+        components.append(current.name)
+        current = parent
+
+
 def repository_relative_path(
     raw_path: str, source_root: Path
 ) -> tuple[Path, Path] | None:
@@ -156,16 +179,24 @@ def repository_relative_path(
     else:
         resolved_path = (source_root / source_path).resolve(strict=False)
 
-    try:
-        return resolved_path, resolved_path.relative_to(source_root)
-    except ValueError:
+    relative_path = filesystem_relative_path(resolved_path, source_root)
+    if relative_path is None:
         return None
+    return resolved_path, relative_path
 
 
 def is_test_source(relative_path: Path) -> bool:
     parts = relative_path.parts
     return any(part == "Tests" or part.endswith("Tests") for part in parts[:-1]) or (
         relative_path.name.endswith("Tests.swift")
+    )
+
+
+def is_generated_source(relative_path: Path) -> bool:
+    return (
+        relative_path.name.endswith(".generated.swift")
+        or relative_path.name.endswith(".g.swift")
+        or "Generated" in relative_path.parts
     )
 
 
@@ -182,9 +213,7 @@ def policy_exclusion_reason(relative_path: str) -> str | None:
         return "preview source"
     if basename.endswith("View.swift"):
         return "SwiftUI View filename"
-    if basename.endswith(".generated.swift"):
-        return "generated source filename"
-    if basename.endswith(".g.swift"):
+    if basename.endswith(".generated.swift") or basename.endswith(".g.swift"):
         return "generated source filename"
     if "Generated" in parts:
         return "generated source directory"
@@ -193,7 +222,7 @@ def policy_exclusion_reason(relative_path: str) -> str | None:
 
 def coverage_files(
     target_data: dict[str, Any], source_root: Path, production_root: Path
-) -> tuple[int, list[tuple[str, str]], list[CoverageFile]]:
+) -> tuple[int, set[str], list[tuple[str, str]], list[CoverageFile]]:
     files = target_data.get("files")
     if not isinstance(files, list):
         raise RuntimeError("selected coverage target has no valid files array")
@@ -201,6 +230,7 @@ def coverage_files(
     swift_file_count = 0
     mapped_swift_file_count = 0
     production_file_count = 0
+    reported_production_paths: set[str] = set()
     unmapped_swift_paths: list[str] = []
     excluded: list[tuple[str, str]] = []
     selected: list[CoverageFile] = []
@@ -240,9 +270,10 @@ def coverage_files(
                 f"coveredLines exceeds executableLines for coverage file: {display_path}"
             )
 
-        try:
-            production_relative_path = resolved_path.relative_to(production_root)
-        except ValueError:
+        production_relative_path = filesystem_relative_path(
+            resolved_path, production_root
+        )
+        if production_relative_path is None:
             excluded.append(
                 (
                     display_path,
@@ -256,6 +287,8 @@ def coverage_files(
             continue
 
         production_file_count += 1
+        if not is_generated_source(production_relative_path):
+            reported_production_paths.add(display_path)
         reason = policy_exclusion_reason(display_path)
         if reason is not None:
             excluded.append((display_path, reason))
@@ -277,7 +310,36 @@ def coverage_files(
 
     excluded.sort(key=lambda item: (item[0], item[1]))
     selected.sort(key=lambda item: item.path)
-    return production_file_count, excluded, selected
+    return production_file_count, reported_production_paths, excluded, selected
+
+
+def current_production_paths(source_root: Path, production_root: Path) -> set[str]:
+    current_paths: set[str] = set()
+    for source_path in production_root.rglob("*.swift"):
+        resolved_path = source_path.resolve(strict=False)
+        repository_path = filesystem_relative_path(resolved_path, source_root)
+        production_path = filesystem_relative_path(resolved_path, production_root)
+        if repository_path is None or production_path is None:
+            raise RuntimeError(
+                f"production Swift source resolves outside source root: {source_path}"
+            )
+
+        if is_test_source(production_path) or is_generated_source(production_path):
+            continue
+        current_paths.add(repository_path.as_posix())
+    return current_paths
+
+
+def validate_report_freshness(
+    current_paths: set[str], reported_paths: set[str]
+) -> None:
+    missing_paths = sorted(current_paths - reported_paths)
+    if missing_paths:
+        paths = "\n".join(f"- {path}" for path in missing_paths)
+        raise RuntimeError(
+            "current production Swift sources are missing from the coverage report:\n"
+            f"{paths}"
+        )
 
 
 def meets_threshold(covered: int, executable: int, threshold: Decimal) -> bool:
@@ -385,9 +447,11 @@ def main() -> int:
         target_name = target_data.get("name")
         if not isinstance(target_name, str) or not target_name:
             raise RuntimeError("selected coverage target has no valid name")
-        production_count, excluded, selected = coverage_files(
+        production_count, reported_paths, excluded, selected = coverage_files(
             target_data, source_root, production_root
         )
+        current_paths = current_production_paths(source_root, production_root)
+        validate_report_freshness(current_paths, reported_paths)
     except RuntimeError as error:
         return report_error("coverage report could not be evaluated", str(error))
 
