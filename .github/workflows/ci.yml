@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Format, test, coverage, and build
+    runs-on: macos-26
+    timeout-minutes: 25
+
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      TEST_DESTINATION: platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Configure temporary paths
+        run: |
+          echo "DERIVED_DATA_PATH=$RUNNER_TEMP/SignalLabDerivedData" >> "$GITHUB_ENV"
+          echo "RESULT_BUNDLE_PATH=$RUNNER_TEMP/SignalLabTests-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.xcresult" >> "$GITHUB_ENV"
+
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          xcodebuild -version
+          xcrun swift --version
+          xcrun swift-format --version
+
+          [[ "$(xcodebuild -version | head -n 1)" == "Xcode 26.6" ]]
+          xcrun swift --version | grep -F "Apple Swift version 6.3.3"
+          [[ "$(xcrun swift-format --version)" == "6.3.0" ]]
+
+      - name: Check Swift formatting
+        run: |
+          xcrun swift-format lint \
+            --recursive \
+            --parallel \
+            --strict \
+            SignalLab SignalLabTests
+
+      - name: Run Debug unit tests with coverage
+        id: tests
+        run: |
+          xcodebuild test \
+            -project SignalLab.xcodeproj \
+            -scheme SignalLab \
+            -configuration Debug \
+            -destination "$TEST_DESTINATION" \
+            -destination-timeout 60 \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -only-testing:SignalLabTests \
+            -enableCodeCoverage YES \
+            -resultBundlePath "$RESULT_BUNDLE_PATH"
+
+      - name: Enforce coverage policy
+        id: coverage
+        run: |
+          python3 Scripts/check_coverage.py \
+            --xcresult "$RESULT_BUNDLE_PATH" \
+            --source-root "$GITHUB_WORKSPACE" \
+            --target SignalLab
+
+      - name: Build Release
+        run: |
+          xcodebuild build \
+            -project SignalLab.xcodeproj \
+            -scheme SignalLab \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$DERIVED_DATA_PATH"
+
+      - name: Upload test result on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: SignalLabTests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.RESULT_BUNDLE_PATH }}
+          if-no-files-found: ignore
+          retention-days: 7
+          include-hidden-files: true
