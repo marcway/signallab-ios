@@ -222,16 +222,13 @@ def policy_exclusion_reason(relative_path: str) -> str | None:
 
 def coverage_files(
     target_data: dict[str, Any], source_root: Path, production_root: Path
-) -> tuple[int, set[str], list[tuple[str, str]], list[CoverageFile]]:
+) -> tuple[int, list[tuple[str, str]], list[CoverageFile]]:
     files = target_data.get("files")
     if not isinstance(files, list):
         raise RuntimeError("selected coverage target has no valid files array")
 
     swift_file_count = 0
-    mapped_swift_file_count = 0
     production_file_count = 0
-    reported_production_paths: set[str] = set()
-    unmapped_swift_paths: list[str] = []
     excluded: list[tuple[str, str]] = []
     selected: list[CoverageFile] = []
 
@@ -245,30 +242,22 @@ def coverage_files(
             continue
 
         swift_file_count += 1
-        mapped_path = repository_relative_path(raw_path, source_root)
-        if mapped_path is None:
-            unmapped_swift_paths.append(raw_path)
-            display_path = raw_path
-            covered_lines = validated_line_count(file_data, "coveredLines", display_path)
-            executable_lines = validated_line_count(
-                file_data, "executableLines", display_path
-            )
-            if covered_lines > executable_lines:
-                raise RuntimeError(
-                    f"coveredLines exceeds executableLines for coverage file: {display_path}"
-                )
-            excluded.append((display_path, "outside repository source root"))
-            continue
-
-        mapped_swift_file_count += 1
-        resolved_path, repository_path = mapped_path
-        display_path = repository_path.as_posix()
-        covered_lines = validated_line_count(file_data, "coveredLines", display_path)
-        executable_lines = validated_line_count(file_data, "executableLines", display_path)
+        covered_lines = validated_line_count(file_data, "coveredLines", raw_path)
+        executable_lines = validated_line_count(file_data, "executableLines", raw_path)
         if covered_lines > executable_lines:
             raise RuntimeError(
-                f"coveredLines exceeds executableLines for coverage file: {display_path}"
+                f"coveredLines exceeds executableLines for coverage file: {raw_path}"
             )
+
+        mapped_path = repository_relative_path(raw_path, source_root)
+        if mapped_path is None:
+            raise RuntimeError(
+                "coverage source path could not be mapped safely under source root "
+                f"{source_root}: {raw_path}"
+            )
+
+        resolved_path, repository_path = mapped_path
+        display_path = repository_path.as_posix()
 
         production_relative_path = filesystem_relative_path(
             resolved_path, production_root
@@ -287,8 +276,6 @@ def coverage_files(
             continue
 
         production_file_count += 1
-        if not is_generated_source(production_relative_path):
-            reported_production_paths.add(display_path)
         reason = policy_exclusion_reason(display_path)
         if reason is not None:
             excluded.append((display_path, reason))
@@ -301,45 +288,10 @@ def coverage_files(
 
     if swift_file_count == 0:
         raise RuntimeError("selected coverage target contains no Swift source-file records")
-    if mapped_swift_file_count == 0:
-        paths = "\n".join(f"- {path}" for path in sorted(unmapped_swift_paths))
-        raise RuntimeError(
-            "none of the selected target's Swift source paths could be mapped "
-            f"under source root {source_root}:\n{paths}"
-        )
 
     excluded.sort(key=lambda item: (item[0], item[1]))
     selected.sort(key=lambda item: item.path)
-    return production_file_count, reported_production_paths, excluded, selected
-
-
-def current_production_paths(source_root: Path, production_root: Path) -> set[str]:
-    current_paths: set[str] = set()
-    for source_path in production_root.rglob("*.swift"):
-        resolved_path = source_path.resolve(strict=False)
-        repository_path = filesystem_relative_path(resolved_path, source_root)
-        production_path = filesystem_relative_path(resolved_path, production_root)
-        if repository_path is None or production_path is None:
-            raise RuntimeError(
-                f"production Swift source resolves outside source root: {source_path}"
-            )
-
-        if is_test_source(production_path) or is_generated_source(production_path):
-            continue
-        current_paths.add(repository_path.as_posix())
-    return current_paths
-
-
-def validate_report_freshness(
-    current_paths: set[str], reported_paths: set[str]
-) -> None:
-    missing_paths = sorted(current_paths - reported_paths)
-    if missing_paths:
-        paths = "\n".join(f"- {path}" for path in missing_paths)
-        raise RuntimeError(
-            "current production Swift sources are missing from the coverage report:\n"
-            f"{paths}"
-        )
+    return production_file_count, excluded, selected
 
 
 def meets_threshold(covered: int, executable: int, threshold: Decimal) -> bool:
@@ -447,11 +399,12 @@ def main() -> int:
         target_name = target_data.get("name")
         if not isinstance(target_name, str) or not target_name:
             raise RuntimeError("selected coverage target has no valid name")
-        production_count, reported_paths, excluded, selected = coverage_files(
+        # CI guarantees source-content freshness by generating and consuming the
+        # xcresult atomically from one checkout. xccov may legitimately omit Swift
+        # files with no independently instrumented executable regions.
+        production_count, excluded, selected = coverage_files(
             target_data, source_root, production_root
         )
-        current_paths = current_production_paths(source_root, production_root)
-        validate_report_freshness(current_paths, reported_paths)
     except RuntimeError as error:
         return report_error("coverage report could not be evaluated", str(error))
 

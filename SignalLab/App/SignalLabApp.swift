@@ -11,7 +11,7 @@ import SwiftUI
 struct SignalLabApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MarketsView(instruments: LocalInstrumentCatalog.instruments)
         }
     }
 }
