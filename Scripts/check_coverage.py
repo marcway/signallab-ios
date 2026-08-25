@@ -228,7 +228,9 @@ def coverage_files(
         raise RuntimeError("selected coverage target has no valid files array")
 
     swift_file_count = 0
+    mapped_swift_file_count = 0
     production_file_count = 0
+    unmapped_swift_paths: list[str] = []
     excluded: list[tuple[str, str]] = []
     selected: list[CoverageFile] = []
 
@@ -251,11 +253,11 @@ def coverage_files(
 
         mapped_path = repository_relative_path(raw_path, source_root)
         if mapped_path is None:
-            raise RuntimeError(
-                "coverage source path could not be mapped safely under source root "
-                f"{source_root}: {raw_path}"
-            )
+            unmapped_swift_paths.append(raw_path)
+            excluded.append((raw_path, "outside repository source root"))
+            continue
 
+        mapped_swift_file_count += 1
         resolved_path, repository_path = mapped_path
         display_path = repository_path.as_posix()
 
@@ -288,6 +290,12 @@ def coverage_files(
 
     if swift_file_count == 0:
         raise RuntimeError("selected coverage target contains no Swift source-file records")
+    if mapped_swift_file_count == 0:
+        paths = "\n".join(f"- {path}" for path in sorted(unmapped_swift_paths))
+        raise RuntimeError(
+            "none of the selected target's Swift source paths could be mapped "
+            f"under source root {source_root}:\n{paths}"
+        )
 
     excluded.sort(key=lambda item: (item[0], item[1]))
     selected.sort(key=lambda item: item.path)
